@@ -1,118 +1,142 @@
-# **프로젝트 제목**  
-프로젝트의 간단한 소개와 목적을 작성합니다.  
-- **프로젝트 기간:** YYYY.MM.DD ~ YYYY.MM.DD  
-- **배포 링크:** [서비스 바로가기](링크 입력) *(필요 시 추가)*  
+# 🎬 Movie Rating MLOps - Development Guide
 
----
+> **영화 평점 예측 MLOps 프로젝트** - 개발 브랜치 (dev)
 
-## **1. 서비스 구성 요소**  
-### **1.1 주요 기능**  
-- 기능 1: *(주요 기능 간단 설명)*  
-- 기능 2: *(주요 기능 간단 설명)*  
-- 기능 3: *(주요 기능 간단 설명)*  
+## 🚀 빠른 시작
 
-### **1.2 사용자 흐름**  
-- 사용자 시나리오 예시:  
-  1. *(유저 행동 1 설명)*  
-  2. *(유저 행동 2 설명)*  
+### 1️⃣ 프로젝트 클론 및 개인 브랜치 생성
 
----
+```bash
+# dev 브랜치 클론
+git clone -b dev https://github.com/AIBootcamp14/mlops-project-mlops-2.git
+cd mlops-project-mlops-2
 
-## **2. 활용 장비 및 협업 툴**  
+# 개인 브랜치 생성 및 전환
+git switch -c <개인브랜치명>
+# 예시: git switch -c feature/Byeonghyeon
+```
 
-### **2.1 활용 장비**  
-- **서버 장비:** *(예: AWS EC2 t2.medium)*  
-- **개발 환경:** *(예: Ubuntu 20.04, Windows 11)*  
-- **테스트 장비:** *(예: MacBook Pro, GPU RTX 3090)*  
+### 2️⃣ 개발 환경 구성
 
-### **2.2 협업 툴**  
-- **소스 관리:** GitHub  
-- **프로젝트 관리:** Jira, Notion  
-- **커뮤니케이션:** Slack  
-- **버전 관리:** Git  
+```bash
+# 원클릭 환경 설정
+make start
 
----
+# 또는 단계별 설정
+make setup      # 환경 설정
+make build      # Docker 이미지 빌드  
+make run        # 컨테이너 실행
+```
 
-## **3. 최종 선정 AI 모델 구조**  
-- **모델 이름:** *(예: BERT, GPT-4, YOLOv8)*  
-- **구조 및 설명:** *(모델의 세부 구조 및 특징 설명)*  
-- **학습 데이터:** *(데이터 출처 및 전처리 방법 설명)*  
-- **평가 지표:** *(정확도, F1-Score, RMSE 등 평가 기준 설명)*  
+### 3️⃣ 개발 진행
 
----
+```bash
+# 컨테이너 접속하여 개발
+make shell
 
-## **4. 서비스 아키텍처**  
-### **4.1 시스템 구조도**  
-서비스 아키텍처 다이어그램을 첨부합니다. *(예: 이미지, 다이어그램)*  
+# 또는 직접 명령 실행
+docker exec -it movie-rating-dev-container python src/main.py preprocessing --date 250101
+```
 
-![서비스 아키텍처 예시](링크 입력)  
+## 📋 Git 협업 워크플로우
 
-### **4.2 데이터 흐름도**  
-- 데이터 처리 및 서비스 간 연결 흐름 설명  
-- 예시:  
-  1. 사용자 입력 → AI 분석 → 결과 반환  
-  2. 데이터 저장 → 전처리 → 모델 적용  
+### 🔄 일반적인 개발 사이클
 
----
+```bash
+# 1. 작업 전 최신 dev 반영
+git checkout dev
+git pull origin dev
+git checkout <개인브랜치명>
+git merge dev
 
-## **5. 사용 기술 스택**  
-### **5.1 백엔드**  
-- Flask / FastAPI / Django *(필요한 항목 작성)*  
-- 데이터베이스: SQLite / PostgreSQL / MySQL  
+# 2. 개발 진행 후 커밋
+git add .
+git commit -m "feat: 영화 크롤러 구현"
 
-### **5.2 프론트엔드**  
-- React.js / Next.js / Vue.js *(필요한 항목 작성)*  
+# 3. 개인 브랜치에 푸시
+git push origin <개인브랜치명>
 
-### **5.3 머신러닝 및 데이터 분석**  
-- TensorFlow / PyTorch  
-- scikit-learn / Pandas / NumPy  
+# 4. GitHub에서 PR 생성
+# dev ← <개인브랜치명> 으로 Pull Request
+```
 
-### **5.4 배포 및 운영**  
-- AWS EC2 / S3 / Lambda  
-- Docker / Kubernetes / GitHub Actions  
+### 📁 서버에서 작업하는 경우
 
----
+**서버 VS Code에서 clone 했다면:**
+- clone한 디렉토리 = 개인 작업공간
+- Docker 구성, Python 실행 등 **자유롭게 사용**
+- **commit한 것만 push**되므로 commit/push만 신중하게
 
-## **6. 팀원 소개**  
+### 🔀 브랜치 전략
 
-| 이름      | 역할              | GitHub                               | 담당 기능                                 |
-|----------|------------------|-------------------------------------|-----------------------------------------|
-| **홍길동** | 팀장/백엔드 개발자 | [GitHub 링크](링크 입력)             | 서버 구축, API 개발, 배포 관리            |
-| **김철수** | 프론트엔드 개발자  | [GitHub 링크](링크 입력)             | UI/UX 디자인, 프론트엔드 개발             |
-| **이영희** | AI 모델 개발자    | [GitHub 링크](링크 입력)             | AI 모델 선정 및 학습, 데이터 분석         |
-| **박수진** | 데이터 엔지니어    | [GitHub 링크](링크 입력)             | 데이터 수집, 전처리, 성능 평가 및 테스트   |
+```
+main (배포)
+  ↑
+ dev (개발 통합)
+  ↑
+feature/개인브랜치들 (개별 개발)
+```
 
----
+## 💡 개발 팁
 
-## **7. Appendix**  
-### **7.1 참고 자료**  
-- 논문 및 문서: *(참고 논문 또는 기술 문서 링크 추가)*  
-- 데이터 출처: *(데이터셋 링크 또는 설명)*  
-- 코드 참고 자료: *(레퍼런스 코드 또는 문서 링크)*  
+### 🎯 커밋 메시지 컨벤션
+```bash
+feat: 새로운 기능 추가
+fix: 버그 수정  
+docs: 문서 수정
+style: 코드 포맷팅
+refactor: 코드 리팩토링
+test: 테스트 추가/수정
+```
 
-### **7.2 설치 및 실행 방법**  
-1. **필수 라이브러리 설치:**  
-    ```bash
-    pip install -r requirements.txt
-    ```
+### 📂 파일별 작업 분담 예시
+```bash
+# 데이터 담당자
+git add src/data/
+git commit -m "feat: TMDB API 크롤러 구현"
 
-2. **서버 실행:**  
-    ```bash
-    python app.py
-    ```
+# 모델 담당자  
+git add src/model/
+git commit -m "feat: PyTorch 평점 예측 모델 구현"
 
-3. **웹페이지 접속:**  
-    ```
-    http://localhost:5000
-    ```
+# API 담당자
+git add src/api/
+git commit -m "feat: FastAPI 엔드포인트 구현"
+```
 
-### **7.3 주요 커밋 기록 및 업데이트 내역**  
+## 🚨 주의사항
 
-| 날짜         | 업데이트 내용                              | 담당자      |
-|-------------|------------------------------------------|------------|
-| YYYY.MM.DD  | 초기 프로젝트 세팅 및 환경 설정 추가          | 홍길동      |
-| YYYY.MM.DD  | AI 모델 최적화 및 성능 개선                   | 이영희      |
-| YYYY.MM.DD  | UI 디자인 및 페이지 구조 업데이트              | 김철수      |
-| YYYY.MM.DD  | 데이터 전처리 및 분석 코드 추가                | 박수진      |
-| YYYY.MM.DD  | 배포 환경 설정 및 Docker 이미지 구성           | 홍길동      |
+### ❌ Git에 올리면 안 되는 것들
+- `.env` 파일 (API 키 포함)
+- `models/*.pkl` 파일 (용량 큰 모델)
+- `dataset/raw/` 데이터 (원본 데이터)
+- `__pycache__/` 폴더
 
+### ✅ 반드시 올려야 하는 것들
+- 소스 코드 (`src/`)
+- 설정 파일 (`.env.template`, `Dockerfile`)
+- 문서 (`README.md`, 주석)
+- 테스트 코드 (`tests/`)
+
+## 🔧 자주 사용하는 명령어
+
+```bash
+# 프로젝트 상태 확인
+make status
+
+# 컨테이너 접속
+make shell
+
+# 컨테이너 로그 확인  
+make logs
+
+# 환경 정리
+make clean
+
+# Git 상태 확인
+git status
+git branch -a
+```
+
+
+**🎬 함께 멋진 영화 평점 예측 서비스를 만들어봅시다!**
