@@ -3,6 +3,7 @@ import sys
 import re
 from collections import defaultdict
 import json
+import joblib
 
 sys.path.append(
     os.path.dirname(
@@ -20,9 +21,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 
-
-
-from src.utils.utils import project_path
+from src.utils.utils import project_path, save_artifacts_bundle, load_artifacts_bundle, default_to_unk
 
 
 class GenreEmbeddingModule(nn.Module):
@@ -30,9 +29,10 @@ class GenreEmbeddingModule(nn.Module):
         super().__init__()
 
         # 장르 인덱싱 + UNK
+        genre_id_set = [str(g) for g in genre_id_set]
         genre2idx = {g: idx + 1 for idx, g in enumerate(sorted(genre_id_set))}  # 1부터 시작
         genre2idx['UNK'] = 0  # 0번은 패딩/UNK 용
-        self.genre2idx = defaultdict(lambda: 0, genre2idx)  # default to UNK
+        self.genre2idx = defaultdict(default_to_unk, genre2idx)  # default to UNK
 
         self.embedding = nn.Embedding(num_embeddings=len(genre2idx), embedding_dim=emb_dim, padding_idx=0)
 
@@ -156,8 +156,20 @@ class MovieRatingDataset:
     def __len__(self):
         return len(self.target)
 
+
     def __getitem__(self, idx):
         return self.features.iloc[idx].values, self.target.iloc[idx]
+
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['okt']
+        return state
+
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.okt = Okt() 
 
 def read_dataset():
     movie_rating_path = os.path.join(project_path(),"data-prepare","result")
@@ -172,13 +184,55 @@ def split_dataset(df):
     return train_df, val_df, test_df
 
 
-def get_datasets(tf_idf = None, embedding_module = None):
+def get_datasets(path="cache", use_cache=True):
+    path = os.path.join(project_path(), 'src','dataset', path)
+    os.makedirs(path, exist_ok=True)
+
+    train_cache = os.path.join(path, "train_dataset.pkl")
+    val_cache = os.path.join(path, "val_dataset.pkl")
+    test_cache = os.path.join(path, "test_dataset.pkl")
+    bundle_path = os.path.join(path, "artifacts_bundle.pkl")
+
+    # 캐시 로드
+    if use_cache and all(os.path.exists(p) for p in [train_cache, val_cache, test_cache, bundle_path]):
+        print("✅ 캐시 및 아티팩트 불러오는 중...")
+        tfidf_vectorizer, genre2idx, embedding_module = load_artifacts_bundle(GenreEmbeddingModule, bundle_path)
+
+        train_dataset = joblib.load(train_cache)
+        val_dataset = joblib.load(val_cache)
+        test_dataset = joblib.load(test_cache)
+
+        # 아티팩트 연결
+        train_dataset.tf_idf = tfidf_vectorizer
+        train_dataset.embedding_module = embedding_module
+        val_dataset.tf_idf = tfidf_vectorizer
+        val_dataset.embedding_module = embedding_module
+        test_dataset.tf_idf = tfidf_vectorizer
+        test_dataset.embedding_module = embedding_module
+
+        return train_dataset, val_dataset, test_dataset
+
+    # 전처리 수행
+    print("🚀 캐시 없음 → 전처리 실행 중...")
     df = read_dataset()
     train_df, val_df, test_df = split_dataset(df)
-    train_dataset = MovieRatingDataset(train_df, tf_idf = tf_idf, embedding_module = embedding_module)
-    val_dataset = MovieRatingDataset(val_df, tf_idf = train_dataset.tf_idf, embedding_module = train_dataset.embedding_module)
-    test_dataset = MovieRatingDataset(test_df, tf_idf = train_dataset.tf_idf, embedding_module = train_dataset.embedding_module)
+
+    train_dataset = MovieRatingDataset(train_df)
+    val_dataset = MovieRatingDataset(val_df, tf_idf=train_dataset.tf_idf, embedding_module=train_dataset.embedding_module)
+    test_dataset = MovieRatingDataset(test_df, tf_idf=train_dataset.tf_idf, embedding_module=train_dataset.embedding_module)
+
+    # 캐시 저장
+    joblib.dump(train_dataset, train_cache)
+    joblib.dump(val_dataset, val_cache)
+    joblib.dump(test_dataset, test_cache)
+
+    # 아티팩트 저장
+    save_artifacts_bundle(train_dataset.tf_idf, train_dataset.genre2idx, train_dataset.embedding_module, path=bundle_path)
+    print("💾 전처리 및 아티팩트 캐시 저장 완료!")
+
     return train_dataset, val_dataset, test_dataset
+
+
 
 
 if __name__ == "__main__":
