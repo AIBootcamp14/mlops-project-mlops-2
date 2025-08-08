@@ -94,7 +94,8 @@ class MovieRatingDataset:
 
 
     # tfidf_df
-    def clean_korean_text(self, text):
+    @staticmethod
+    def clean_korean_text(text):
         text = re.sub(r'[^가-힣\s]', '', str(text))
         return text.strip()
     
@@ -172,16 +173,24 @@ class MovieRatingDataset:
         self.okt = Okt() 
 
 def read_dataset():
-    movie_rating_path = os.path.join(project_path(),"data-prepare","result")
+    movie_rating_path = os.path.join(project_path(),"data_prepare","result")
     with open(movie_rating_path +"/popular.json","r", encoding= 'utf-8')as f:
         data = json.load(f)
     df = pd.DataFrame(data['movies'])
     return df
 
+
 def split_dataset(df):
     train_df, val_df = train_test_split(df, test_size=0.2, random_state=42)
     train_df, test_df = train_test_split(train_df, test_size=0.2, random_state=42)
     return train_df, val_df, test_df
+
+
+def get_genre_decode():
+    movie_rating_path = os.path.join(project_path(),"data_prepare","result")
+    with open(movie_rating_path +"/popular.json","r", encoding= 'utf-8')as f:
+        data = json.load(f)
+    return data['genre_decode']
 
 
 def get_datasets(path="cache", use_cache=True):
@@ -227,7 +236,7 @@ def get_datasets(path="cache", use_cache=True):
     joblib.dump(test_dataset, test_cache)
 
     # 아티팩트 저장
-    save_artifacts_bundle(train_dataset.tf_idf, train_dataset.genre2idx, train_dataset.embedding_module, path=bundle_path)
+    save_artifacts_bundle(train_dataset.tf_idf, train_dataset.genre2idx, train_dataset.embedding_module.cpu(), path=bundle_path)
     print("💾 전처리 및 아티팩트 캐시 저장 완료!")
 
     return train_dataset, val_dataset, test_dataset
@@ -237,7 +246,8 @@ def get_datasets(path="cache", use_cache=True):
 
 if __name__ == "__main__":
     print('test 중 입니다.')
-    train, valid, test = get_datasets()
-    print("train set 첫번째 행 : ", train[0])
-    print("valid set 첫번째 행 : ", valid[0])
-    print("test set 첫번째 행 : ", test[0])
+    # train, valid, test = get_datasets()
+    # print("train set 첫번째 행 : ", train.features.columns)
+    # print("valid set 첫번째 행 : ", valid[0])
+    # print("test set 첫번째 행 : ", test[0])
+    print([i for i, j in get_genre_decode().items()])

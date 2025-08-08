@@ -1,7 +1,12 @@
-import mlflow
 import io
 import os
+import sys
 import joblib
+
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+
 import lightgbm as lgb
 import pandas as pd
 import numpy as np
@@ -11,7 +16,9 @@ from datetime import datetime, timezone, timedelta
 from lightgbm import early_stopping
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-from mlflow.models import infer_signature
+import mlflow
+from mlflow.models import infer_signature, ModelSignature
+from mlflow.types.schema import Schema, ColSpec
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
@@ -22,6 +29,7 @@ from src.ml.config import init_mlflow
 from src.utils.logger import get_logger
 from src.utils.utils import init_seed, model_dir, project_path
 from src.utils.enums import ModelType
+from src.models.MovieRatingModel import MovieRatingModel
 
 logger = get_logger(__name__)
 
@@ -39,7 +47,7 @@ def filter_custom_params(model, user_defined_params: dict):
 def model_save(model, all_params, model_params, tf_idf, embedding_module, genre2idx,
                timestamp, rmse, update_checkpoint=True):
     model_path = os.path.join(project_path(), 'models') 
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    os.makedirs(model_path, exist_ok=True)
 
     file_name = type(model).__name__
 
@@ -49,7 +57,7 @@ def model_save(model, all_params, model_params, tf_idf, embedding_module, genre2
         "model": model,
         "model_params": model_params,
         "tf_idf": tf_idf,
-        "embedding_module": embedding_module,
+        "embedding_module": embedding_module.state_dict(),
         "genre2idx": genre2idx,
         "rmse": rmse,
         "timestamp": timestamp
@@ -77,7 +85,7 @@ def model_save(model, all_params, model_params, tf_idf, embedding_module, genre2
     return dst
 
 
-def train_and_log_model(model_name, **kwargs):
+def train_and_log_model(model_name, local_save = False,**kwargs):
     init_mlflow(experiment_name = "movie_rating_final")
 
     if isinstance(model_name, str):
@@ -141,33 +149,56 @@ def train_and_log_model(model_name, **kwargs):
                 "valid_rmse": valid_rmse,
                 "test_rmse": test_rmse
             }
-
-        dst = model_save(
-            model = model,
-            all_params = all_params,
-            model_params = custom_params,
-            tf_idf = train_dataset.tf_idf,
-            embedding_module=train_dataset.embedding_module,
-            genre2idx=train_dataset.genre2idx,
-            timestamp = timestamp,
-            rmse = {
-                "train_rmse": train_rmse,
-                "valid_rmse": valid_rmse,
-                "test_rmse": test_rmse
-            }
-        )
+        if local_save:
+            dst = model_save(
+                model = model,
+                all_params = all_params,
+                model_params = custom_params,
+                tf_idf = train_dataset.tf_idf,
+                embedding_module=train_dataset.embedding_module,
+                genre2idx=train_dataset.genre2idx,
+                timestamp = timestamp,
+                rmse = {
+                    "train_rmse": train_rmse,
+                    "valid_rmse": valid_rmse,
+                    "test_rmse": test_rmse
+                }
+            )
 
         # 6. MLflow 메트릭 & 파라미터 로깅
+
         mlflow.log_params(custom_params)
         mlflow.log_metric("rmse", valid_rmse)
         mlflow.set_tag("model_timestamp", timestamp)
+        
+        artifact_path = os.path.join(project_path(),"src","dataset","cache", "artifacts_bundle.pkl")
 
         # 7. 모델 저장
-        signature = infer_signature(X_train, model.predict(X_train))
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            name=type(model).__name__,
-            input_example=X_train.iloc[:5],
+        input_example = pd.DataFrame([{
+            "overview": "이 영화는 액션과 감동이 넘친다",
+            "genres": '["액션", "모험"]',
+            "adult": 0.0,
+            "video": 0.0,
+            "original_language": "kr"
+        }])
+
+        signature = ModelSignature(
+            inputs=Schema([
+                ColSpec("string", "overview"),
+                ColSpec("string", "genres"),
+                ColSpec("double", "adult"),
+                ColSpec("double", "video"),
+                ColSpec("string", "original_language")
+            ]),
+            outputs=Schema([ColSpec("double")])
+        )
+        mlflow.pyfunc.log_model(
+            name = "movie_rating_model",
+            python_model= MovieRatingModel(model = model),
+            artifacts={
+                "artifacts_bundle" : artifact_path
+            },
+            input_example=input_example,
             signature=signature
         )
 
@@ -175,7 +206,3 @@ def train_and_log_model(model_name, **kwargs):
         mlflow.log_artifact(dst)
 
         logger.info(f"[{run_name}][{model_type.value.upper()}] RMSE: {valid_rmse:.4f}")
-
-
-
-
